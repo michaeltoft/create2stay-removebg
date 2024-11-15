@@ -16,7 +16,7 @@ RUN pip install rembg fastapi uvicorn requests aiohttp pillow python-multipart
 # Create directories for temporary file storage
 RUN mkdir -p /app/temp
 
-# Create .u2net directory and download the model
+# Create .u2net directory and download all models
 RUN mkdir -p /root/.u2net && \
     wget https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx -O /root/.u2net/u2net.onnx
 

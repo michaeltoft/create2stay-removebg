@@ -2,11 +2,10 @@ import os
 import io
 import aiohttp
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from rembg import remove, new_session
 from PIL import Image
-import requests
 
 app = FastAPI()
 
@@ -26,17 +25,21 @@ async def remove_background(url: str):
         # Download the image
         image_data = await download_image(url)
 
-        # Convert to PIL Image and maintain orientation
+        # Convert to PIL Image
         input_image = Image.open(io.BytesIO(image_data))
+
+        # Convert to RGBA if not already
+        if input_image.mode != 'RGBA':
+            input_image = input_image.convert('RGBA')
 
         # Process the image with rembg
         output_image = remove(
             input_image,
             session=session,
             alpha_matting=True,
-            alpha_matting_foreground_threshold=255,
-            alpha_matting_background_threshold=0,
-            alpha_matting_erode_size=5,
+            alpha_matting_foreground_threshold=250,
+            alpha_matting_background_threshold=5,
+            alpha_matting_erode_size=1,
             post_process_mask=True
         )
 
@@ -45,10 +48,10 @@ async def remove_background(url: str):
         output_image.save(img_byte_arr, format='PNG', optimize=False, quality=100)
         img_byte_arr.seek(0)
 
-        # Return the processed image
         return StreamingResponse(img_byte_arr, media_type="image/png")
 
     except Exception as e:
+        print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
