@@ -2,15 +2,8 @@
   "name": "background-removal-service",
   "version": "1.0.0",
   "scripts": {
-    "docker:build": "docker build -t europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest .",
-    "docker:push": "docker push europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest",
-    "docker:local": "docker run -p 8000:8000 europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest",
-    "gcp:setup": "gcloud auth configure-docker europe-north1-docker.pkg.dev && gcloud artifacts repositories create background-removal --repository-format=docker --location=europe-north1 --project=create2stay",
-    "gcp:instance-create": "gcloud compute instances create-with-container background-removal-instance --container-image europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest --machine-type=e2-medium --zone=europe-north1-b --project=create2stay --tags=http-server",
-    "gcp:firewall": "gcloud compute firewall-rules create allow-http --allow tcp:8000 --target-tags=http-server --project=create2stay",
-    "gcp:update-container": "gcloud compute instances update-container background-removal-instance --container-image europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest --zone europe-north1-b",
-    "gcp:instance-reset": "gcloud compute instances reset background-removal-instance --zone europe-north1-b",
-    "deploy": "npm run docker:build && npm run docker:push && npm run gcp:update-container && npm run gcp:instance-reset",
-    "deploy:status": "gcloud compute instances describe background-removal-instance --zone europe-north1-b --format='get(networkInterfaces[0].accessConfigs[0].natIP)' && echo '\nInstance Status:' && gcloud compute instances describe background-removal-instance --zone europe-north1-b --format='get(status)'"
+    "build": "docker build -t europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest .",
+    "deploy": "npm run build && docker push europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest && gcloud compute instances update-container background-removal-instance --container-image europe-north1-docker.pkg.dev/create2stay/background-removal/api:latest --zone=europe-north1-b && gcloud compute instances reset background-removal-instance --zone=europe-north1-b",
+    "status": "gcloud compute instances describe background-removal-instance --zone=europe-north1-b --format='get(status)'"
   }
 }

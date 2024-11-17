@@ -6,11 +6,46 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from rembg import remove, new_session
 from PIL import Image
+import re
 
 app = FastAPI()
 
 # Create a session at startup
 session = new_session("u2net")
+
+def is_valid_hex_color(color: str) -> bool:
+    """Validate hex color format."""
+    if not color:
+        return False
+    # Check for 3 or 6 character hex color with optional #
+    pattern = r'^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+    return bool(re.match(pattern, color))
+
+def hex_to_rgba(hex_color: str) -> tuple:
+    """Convert hex color to RGBA tuple."""
+    # Remove # if present
+    hex_color = hex_color.lstrip('#')
+
+    # Convert 3-digit hex to 6-digit
+    if len(hex_color) == 3:
+        hex_color = ''.join(c * 2 for c in hex_color)
+
+    # Convert to RGB values
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+
+    return (r, g, b, 255)  # Full opacity
+
+def apply_background_color(image: Image.Image, color: str) -> Image.Image:
+    """Apply background color to transparent image."""
+    # Create a new image with the solid background
+    background = Image.new('RGBA', image.size, hex_to_rgba(color))
+
+    # Paste the original image using itself as mask
+    background.paste(image, mask=image)
+
+    return background
 
 async def download_image(url: str) -> bytes:
     async with aiohttp.ClientSession() as session:
@@ -72,9 +107,17 @@ async def remove_background(
         url: str,
         width: int = Query(None, gt=0, description="Target width including padding"),
         height: int = Query(None, gt=0, description="Target height including padding"),
-        padding: int = Query(0, ge=0, description="Padding to apply around the image")
+        padding: int = Query(0, ge=0, description="Padding to apply around the image"),
+        bgcolor: str = Query(None, description="Hex color for background (e.g., '#FF0000' or 'FF0000')")
 ):
     try:
+        # Validate bgcolor if provided
+        if bgcolor and not is_valid_hex_color(bgcolor):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid hex color format. Use '#RRGGBB', 'RRGGBB', '#RGB', or 'RGB'"
+            )
+
         # Download the image
         image_data = await download_image(url)
 
@@ -102,6 +145,10 @@ async def remove_background(
             output_image = trim_image(output_image)
             # Resize and add padding
             output_image = resize_with_padding(output_image, width, height, padding)
+
+        # Apply background color if provided
+        if bgcolor:
+            output_image = apply_background_color(output_image, bgcolor)
 
         # Save to bytes
         img_byte_arr = io.BytesIO()
