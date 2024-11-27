@@ -4,13 +4,23 @@ import aiohttp
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from rembg import remove, new_session
 from PIL import Image
 import re
 
 app = FastAPI()
 
-# Create a session at startup
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Rest of your code remains the same...
 session = new_session("u2net")
 
 def is_valid_hex_color(color: str) -> bool:
